@@ -1,0 +1,157 @@
+service: player-service
+
+plugins:
+  - serverless-plugin-aws-alerts
+  - serverless-esbuild
+
+custom:
+  esbuild:
+    bundle: true
+    minify: false
+    sourcemap: true
+    exclude: ['aws-sdk']
+    target: 'node14'
+    define: { 'require.resolve': undefined }
+    platform: 'node'
+    concurrency: 10
+  alerts:
+    stages:
+      - prod
+    dashboards: false
+    topics:
+      alarm:
+        topic: ${self:service}-${opt:stage}-alarm
+      ok:
+        topic: ${self:service}-${opt:stage}-ok
+    definitions:
+      functionDuration:
+        treatMissingData: notBreaching
+        threshold: 3000
+        period: 300
+        evaluationPeriods: 2
+        datapointsToAlarm: 2
+      functionErrors:
+        treatMissingData: notBreaching
+        threshold: 1
+        statistic: Sum
+        period: 60
+        evaluationPeriods: 1
+        datapointsToAlarm: 1
+        comparisonOperator: GreaterThanOrEqualToThreshold
+      functionThrottles:
+        treatMissingData: notBreaching
+        period: 120
+        evaluationPeriods: 2
+        datapointsToAlarm: 2
+      functionInvocations:
+        treatMissingData: notBreaching
+        threshold: 100
+        statistic: Sum
+        period: 60
+        evaluationPeriods: 1
+        datapointsToAlarm: 1
+        comparisonOperator: GreaterThanOrEqualToThreshold    
+    alarms:
+      - functionThrottles
+      - functionErrors
+      - functionInvocations
+      - functionDuration
+
+provider:
+  name: aws
+  runtime: nodejs14.x
+  stage: ${opt:stage}
+  region: ${opt:region}
+  versionFunctions: false
+  logRetentionInDays: 14
+  stackTags:
+    Project: ${self:service}
+    Stage: ${self:provider.stage}
+  iam:
+    role:
+      statements:
+        - Effect: Allow
+          Action:
+            - dynamodb:Query
+            - dynamodb:Scan
+            - dynamodb:GetItem
+            - dynamodb:PutItem
+          Resource:
+            - Fn::GetAtt: [DynamoDBTable, Arn] # explicit permissions
+            - Fn::Join:
+              - ''
+              - - Fn::GetAtt: [DynamoDBTable, Arn]
+                - /index/*
+  deploymentBucket:
+    name: meetup-demo-${aws:accountId}-${self:provider.region} # account & region make it portable
+  environment:
+    STAGE: ${self:provider.stage}
+    SERVICE: ${self:service}
+    DYNAMODB_TABLE:
+      Ref: DynamoDBTable
+    
+package:
+  patterns:
+    - '!.env'
+    - '!node_modules/serverless/**'
+    - '!node_modules/aws-sdk/**'
+    - '!test*'
+    - '!./**/__tests__/**'
+    - '!./**/**/__tests__/**'
+    - '!__tests__/**'
+    - '!docker-compose.yml'
+    - '!buildspec.yml'
+    - '!README*'
+    - '!.nyc_output'
+    - '!.test-setup.js'
+    - '!__mocks__/**'
+    - '!nodejs/**'
+    - '!coverage/**'
+
+functions:
+
+  PlayerPost:
+    handler: lambdas/post.handler
+    name: ${self:provider.stage}-${self:service}-post
+    memorySize: 128
+    timeout: 10
+    events:
+      - httpApi:
+          method: POST
+          path: /players
+
+  PlayerGet:
+    handler: lambdas/get.handler
+    name: ${self:provider.stage}-${self:service}-get
+    memorySize: 128
+    timeout: 10
+    events:
+      - httpApi:
+          method: GET
+          path: /players
+
+resources:
+  Resources:
+    DynamoDBTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:provider.stage}-${self:service}
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          -
+            AttributeName: id
+            AttributeType: S
+          -
+            AttributeName: teamId
+            AttributeType: S
+        KeySchema:
+          -
+            AttributeName: id
+            KeyType: HASH
+        GlobalSecondaryIndexes:
+          - IndexName: teamIdIndex
+            KeySchema:
+              - AttributeName: teamId
+                KeyType: HASH
+            Projection: 
+              ProjectionType: ALL

@@ -1,0 +1,21 @@
+{
+  "compilerOptions": {
+    "target": "es2019",
+    "module": "commonjs",
+    "outDir": "dist",
+    "rootDir": ".",
+    "strict": true,
+    "moduleResolution": "node",
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "skipDefaultLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "skipLibCheck": true,
+    "types": [
+      "jest",
+      "node"
+    ]
+  },
+  "include": ["lambdas/*","src/**/*"],
+  "exclude": ["src/types/*.ts", "node_modules", ".vscode", ".idea", "jest*", "local*"]
+}

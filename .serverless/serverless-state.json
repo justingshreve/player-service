@@ -1,0 +1,691 @@
+{
+  "service": {
+    "service": "player-service",
+    "serviceObject": {
+      "name": "player-service"
+    },
+    "provider": {
+      "name": "aws",
+      "runtime": "nodejs14.x",
+      "stage": "jgs",
+      "region": "us-west-1",
+      "versionFunctions": false,
+      "logRetentionInDays": 14,
+      "stackTags": {
+        "Project": "player-service",
+        "Stage": "jgs"
+      },
+      "iam": {
+        "role": {
+          "statements": [
+            {
+              "Effect": "Allow",
+              "Action": [
+                "dynamodb:Query",
+                "dynamodb:Scan",
+                "dynamodb:GetItem",
+                "dynamodb:PutItem"
+              ],
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "DynamoDBTable",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      {
+                        "Fn::GetAtt": [
+                          "DynamoDBTable",
+                          "Arn"
+                        ]
+                      },
+                      "/index/*"
+                    ]
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "deploymentBucket": "meetup-demo-580216350677-us-west-1",
+      "environment": {
+        "STAGE": "jgs",
+        "SERVICE": "player-service",
+        "DYNAMODB_TABLE": {
+          "Ref": "DynamoDBTable"
+        }
+      },
+      "deploymentBucketObject": {
+        "name": "meetup-demo-580216350677-us-west-1"
+      },
+      "compiledCloudFormationTemplate": {
+        "AWSTemplateFormatVersion": "2010-09-09",
+        "Description": "The AWS CloudFormation template for this Serverless application",
+        "Resources": {
+          "PlayerPostLogGroup": {
+            "Type": "AWS::Logs::LogGroup",
+            "Properties": {
+              "LogGroupName": "/aws/lambda/jgs-player-service-post",
+              "RetentionInDays": 14
+            }
+          },
+          "PlayerGetLogGroup": {
+            "Type": "AWS::Logs::LogGroup",
+            "Properties": {
+              "LogGroupName": "/aws/lambda/jgs-player-service-get",
+              "RetentionInDays": 14
+            }
+          },
+          "IamRoleLambdaExecution": {
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+              "AssumeRolePolicyDocument": {
+                "Version": "2012-10-17",
+                "Statement": [
+                  {
+                    "Effect": "Allow",
+                    "Principal": {
+                      "Service": [
+                        "lambda.amazonaws.com"
+                      ]
+                    },
+                    "Action": [
+                      "sts:AssumeRole"
+                    ]
+                  }
+                ]
+              },
+              "Policies": [
+                {
+                  "PolicyName": {
+                    "Fn::Join": [
+                      "-",
+                      [
+                        "player-service",
+                        "jgs",
+                        "lambda"
+                      ]
+                    ]
+                  },
+                  "PolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                      {
+                        "Effect": "Allow",
+                        "Action": [
+                          "logs:CreateLogStream",
+                          "logs:CreateLogGroup"
+                        ],
+                        "Resource": [
+                          {
+                            "Fn::Sub": "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/jgs-player-service-post:*"
+                          },
+                          {
+                            "Fn::Sub": "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/jgs-player-service-get:*"
+                          }
+                        ]
+                      },
+                      {
+                        "Effect": "Allow",
+                        "Action": [
+                          "logs:PutLogEvents"
+                        ],
+                        "Resource": [
+                          {
+                            "Fn::Sub": "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/jgs-player-service-post:*:*"
+                          },
+                          {
+                            "Fn::Sub": "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/jgs-player-service-get:*:*"
+                          }
+                        ]
+                      },
+                      {
+                        "$ref": "$[\"service\"][\"provider\"][\"iam\"][\"role\"][\"statements\"][0]"
+                      }
+                    ]
+                  }
+                }
+              ],
+              "Path": "/",
+              "RoleName": {
+                "Fn::Join": [
+                  "-",
+                  [
+                    "player-service",
+                    "jgs",
+                    {
+                      "Ref": "AWS::Region"
+                    },
+                    "lambdaRole"
+                  ]
+                ]
+              }
+            }
+          },
+          "PlayerPostLambdaFunction": {
+            "Type": "AWS::Lambda::Function",
+            "Properties": {
+              "Code": {
+                "S3Bucket": "meetup-demo-580216350677-us-west-1",
+                "S3Key": "serverless/player-service/jgs/1654787774333-2022-06-09T15:16:14.333Z/player-service.zip"
+              },
+              "Handler": "lambdas/post.handler",
+              "Runtime": "nodejs14.x",
+              "FunctionName": "jgs-player-service-post",
+              "MemorySize": 128,
+              "Timeout": 10,
+              "Environment": {
+                "Variables": {
+                  "STAGE": "jgs",
+                  "SERVICE": "player-service",
+                  "DYNAMODB_TABLE": {
+                    "$ref": "$[\"service\"][\"provider\"][\"environment\"][\"DYNAMODB_TABLE\"]"
+                  }
+                }
+              },
+              "Role": {
+                "Fn::GetAtt": [
+                  "IamRoleLambdaExecution",
+                  "Arn"
+                ]
+              }
+            },
+            "DependsOn": [
+              "PlayerPostLogGroup"
+            ]
+          },
+          "PlayerGetLambdaFunction": {
+            "Type": "AWS::Lambda::Function",
+            "Properties": {
+              "Code": {
+                "S3Bucket": "meetup-demo-580216350677-us-west-1",
+                "S3Key": "serverless/player-service/jgs/1654787774333-2022-06-09T15:16:14.333Z/player-service.zip"
+              },
+              "Handler": "lambdas/get.handler",
+              "Runtime": "nodejs14.x",
+              "FunctionName": "jgs-player-service-get",
+              "MemorySize": 128,
+              "Timeout": 10,
+              "Environment": {
+                "Variables": {
+                  "STAGE": "jgs",
+                  "SERVICE": "player-service",
+                  "DYNAMODB_TABLE": {
+                    "$ref": "$[\"service\"][\"provider\"][\"environment\"][\"DYNAMODB_TABLE\"]"
+                  }
+                }
+              },
+              "Role": {
+                "Fn::GetAtt": [
+                  "IamRoleLambdaExecution",
+                  "Arn"
+                ]
+              }
+            },
+            "DependsOn": [
+              "PlayerGetLogGroup"
+            ]
+          },
+          "HttpApi": {
+            "Type": "AWS::ApiGatewayV2::Api",
+            "Properties": {
+              "Name": "jgs-player-service",
+              "ProtocolType": "HTTP"
+            }
+          },
+          "HttpApiStage": {
+            "Type": "AWS::ApiGatewayV2::Stage",
+            "Properties": {
+              "ApiId": {
+                "Ref": "HttpApi"
+              },
+              "StageName": "$default",
+              "AutoDeploy": true,
+              "DefaultRouteSettings": {
+                "DetailedMetricsEnabled": false
+              }
+            }
+          },
+          "PlayerPostLambdaPermissionHttpApi": {
+            "Type": "AWS::Lambda::Permission",
+            "Properties": {
+              "FunctionName": {
+                "Fn::GetAtt": [
+                  "PlayerPostLambdaFunction",
+                  "Arn"
+                ]
+              },
+              "Action": "lambda:InvokeFunction",
+              "Principal": "apigateway.amazonaws.com",
+              "SourceArn": {
+                "Fn::Join": [
+                  "",
+                  [
+                    "arn:",
+                    {
+                      "Ref": "AWS::Partition"
+                    },
+                    ":execute-api:",
+                    {
+                      "Ref": "AWS::Region"
+                    },
+                    ":",
+                    {
+                      "Ref": "AWS::AccountId"
+                    },
+                    ":",
+                    {
+                      "Ref": "HttpApi"
+                    },
+                    "/*"
+                  ]
+                ]
+              }
+            }
+          },
+          "HttpApiIntegrationPlayerPost": {
+            "Type": "AWS::ApiGatewayV2::Integration",
+            "Properties": {
+              "ApiId": {
+                "Ref": "HttpApi"
+              },
+              "IntegrationType": "AWS_PROXY",
+              "IntegrationUri": {
+                "$ref": "$[\"service\"][\"provider\"][\"compiledCloudFormationTemplate\"][\"Resources\"][\"PlayerPostLambdaPermissionHttpApi\"][\"Properties\"][\"FunctionName\"]"
+              },
+              "PayloadFormatVersion": "2.0",
+              "TimeoutInMillis": 10500
+            }
+          },
+          "HttpApiRoutePostPlayers": {
+            "Type": "AWS::ApiGatewayV2::Route",
+            "Properties": {
+              "ApiId": {
+                "Ref": "HttpApi"
+              },
+              "RouteKey": "POST /players",
+              "Target": {
+                "Fn::Join": [
+                  "/",
+                  [
+                    "integrations",
+                    {
+                      "Ref": "HttpApiIntegrationPlayerPost"
+                    }
+                  ]
+                ]
+              }
+            },
+            "DependsOn": "HttpApiIntegrationPlayerPost"
+          },
+          "PlayerGetLambdaPermissionHttpApi": {
+            "Type": "AWS::Lambda::Permission",
+            "Properties": {
+              "FunctionName": {
+                "Fn::GetAtt": [
+                  "PlayerGetLambdaFunction",
+                  "Arn"
+                ]
+              },
+              "Action": "lambda:InvokeFunction",
+              "Principal": "apigateway.amazonaws.com",
+              "SourceArn": {
+                "Fn::Join": [
+                  "",
+                  [
+                    "arn:",
+                    {
+                      "Ref": "AWS::Partition"
+                    },
+                    ":execute-api:",
+                    {
+                      "Ref": "AWS::Region"
+                    },
+                    ":",
+                    {
+                      "Ref": "AWS::AccountId"
+                    },
+                    ":",
+                    {
+                      "Ref": "HttpApi"
+                    },
+                    "/*"
+                  ]
+                ]
+              }
+            }
+          },
+          "HttpApiIntegrationPlayerGet": {
+            "Type": "AWS::ApiGatewayV2::Integration",
+            "Properties": {
+              "ApiId": {
+                "Ref": "HttpApi"
+              },
+              "IntegrationType": "AWS_PROXY",
+              "IntegrationUri": {
+                "$ref": "$[\"service\"][\"provider\"][\"compiledCloudFormationTemplate\"][\"Resources\"][\"PlayerGetLambdaPermissionHttpApi\"][\"Properties\"][\"FunctionName\"]"
+              },
+              "PayloadFormatVersion": "2.0",
+              "TimeoutInMillis": 10500
+            }
+          },
+          "HttpApiRouteGetPlayers": {
+            "Type": "AWS::ApiGatewayV2::Route",
+            "Properties": {
+              "ApiId": {
+                "Ref": "HttpApi"
+              },
+              "RouteKey": "GET /players",
+              "Target": {
+                "Fn::Join": [
+                  "/",
+                  [
+                    "integrations",
+                    {
+                      "Ref": "HttpApiIntegrationPlayerGet"
+                    }
+                  ]
+                ]
+              }
+            },
+            "DependsOn": "HttpApiIntegrationPlayerGet"
+          },
+          "DynamoDBTable": {
+            "Type": "AWS::DynamoDB::Table",
+            "Properties": {
+              "TableName": "jgs-player-service",
+              "BillingMode": "PAY_PER_REQUEST",
+              "AttributeDefinitions": [
+                {
+                  "AttributeName": "id",
+                  "AttributeType": "S"
+                },
+                {
+                  "AttributeName": "teamId",
+                  "AttributeType": "S"
+                }
+              ],
+              "KeySchema": [
+                {
+                  "AttributeName": "id",
+                  "KeyType": "HASH"
+                }
+              ],
+              "GlobalSecondaryIndexes": [
+                {
+                  "IndexName": "teamIdIndex",
+                  "KeySchema": [
+                    {
+                      "AttributeName": "teamId",
+                      "KeyType": "HASH"
+                    }
+                  ],
+                  "Projection": {
+                    "ProjectionType": "ALL"
+                  }
+                }
+              ]
+            }
+          }
+        },
+        "Outputs": {
+          "ServerlessDeploymentBucketName": {
+            "Value": "meetup-demo-580216350677-us-west-1",
+            "Export": {
+              "Name": "sls-player-service-jgs-ServerlessDeploymentBucketName"
+            }
+          },
+          "HttpApiId": {
+            "Description": "Id of the HTTP API",
+            "Value": {
+              "Ref": "HttpApi"
+            },
+            "Export": {
+              "Name": "sls-player-service-jgs-HttpApiId"
+            }
+          },
+          "HttpApiUrl": {
+            "Description": "URL of the HTTP API",
+            "Value": {
+              "Fn::Join": [
+                "",
+                [
+                  "https://",
+                  {
+                    "Ref": "HttpApi"
+                  },
+                  ".execute-api.",
+                  {
+                    "Ref": "AWS::Region"
+                  },
+                  ".",
+                  {
+                    "Ref": "AWS::URLSuffix"
+                  }
+                ]
+              ]
+            },
+            "Export": {
+              "Name": "sls-player-service-jgs-HttpApiUrl"
+            }
+          }
+        }
+      },
+      "vpc": {}
+    },
+    "custom": {
+      "esbuild": {
+        "bundle": true,
+        "minify": false,
+        "sourcemap": true,
+        "exclude": [
+          "aws-sdk"
+        ],
+        "target": "node14",
+        "define": {
+          "require.resolve": "undefined"
+        },
+        "platform": "node",
+        "concurrency": 10
+      },
+      "alerts": {
+        "stages": [
+          "prod"
+        ],
+        "dashboards": false,
+        "topics": {
+          "alarm": {
+            "topic": "player-service-jgs-alarm"
+          },
+          "ok": {
+            "topic": "player-service-jgs-ok"
+          }
+        },
+        "definitions": {
+          "functionDuration": {
+            "treatMissingData": "notBreaching",
+            "threshold": 3000,
+            "period": 300,
+            "evaluationPeriods": 2,
+            "datapointsToAlarm": 2
+          },
+          "functionErrors": {
+            "treatMissingData": "notBreaching",
+            "threshold": 1,
+            "statistic": "Sum",
+            "period": 60,
+            "evaluationPeriods": 1,
+            "datapointsToAlarm": 1,
+            "comparisonOperator": "GreaterThanOrEqualToThreshold"
+          },
+          "functionThrottles": {
+            "treatMissingData": "notBreaching",
+            "period": 120,
+            "evaluationPeriods": 2,
+            "datapointsToAlarm": 2
+          },
+          "functionInvocations": {
+            "treatMissingData": "notBreaching",
+            "threshold": 100,
+            "statistic": "Sum",
+            "period": 60,
+            "evaluationPeriods": 1,
+            "datapointsToAlarm": 1,
+            "comparisonOperator": "GreaterThanOrEqualToThreshold"
+          }
+        },
+        "alarms": [
+          "functionThrottles",
+          "functionErrors",
+          "functionInvocations",
+          "functionDuration"
+        ]
+      }
+    },
+    "plugins": [
+      "serverless-plugin-aws-alerts",
+      "serverless-esbuild"
+    ],
+    "pluginsData": {},
+    "functions": {
+      "PlayerPost": {
+        "handler": "lambdas/post.handler",
+        "name": "jgs-player-service-post",
+        "memorySize": 128,
+        "timeout": 10,
+        "events": [
+          {
+            "httpApi": {
+              "method": "POST",
+              "path": "/players"
+            },
+            "resolvedMethod": "POST",
+            "resolvedPath": "/players"
+          }
+        ],
+        "package": {
+          "patterns": []
+        },
+        "memory": 128,
+        "runtime": "nodejs14.x",
+        "vpc": {}
+      },
+      "PlayerGet": {
+        "handler": "lambdas/get.handler",
+        "name": "jgs-player-service-get",
+        "memorySize": 128,
+        "timeout": 10,
+        "events": [
+          {
+            "httpApi": {
+              "method": "GET",
+              "path": "/players"
+            },
+            "resolvedMethod": "GET",
+            "resolvedPath": "/players"
+          }
+        ],
+        "package": {
+          "patterns": []
+        },
+        "memory": 128,
+        "runtime": "nodejs14.x",
+        "vpc": {}
+      }
+    },
+    "resources": {
+      "Resources": {
+        "DynamoDBTable": {
+          "Type": "AWS::DynamoDB::Table",
+          "Properties": {
+            "TableName": "jgs-player-service",
+            "BillingMode": "PAY_PER_REQUEST",
+            "AttributeDefinitions": [
+              {
+                "AttributeName": "id",
+                "AttributeType": "S"
+              },
+              {
+                "AttributeName": "teamId",
+                "AttributeType": "S"
+              }
+            ],
+            "KeySchema": [
+              {
+                "AttributeName": "id",
+                "KeyType": "HASH"
+              }
+            ],
+            "GlobalSecondaryIndexes": [
+              {
+                "IndexName": "teamIdIndex",
+                "KeySchema": [
+                  {
+                    "AttributeName": "teamId",
+                    "KeyType": "HASH"
+                  }
+                ],
+                "Projection": {
+                  "ProjectionType": "ALL"
+                }
+              }
+            ]
+          }
+        }
+      },
+      "Outputs": {}
+    },
+    "configValidationMode": "warn",
+    "serviceFilename": "serverless.yml",
+    "initialServerlessConfig": {
+      "service": "player-service",
+      "plugins": {
+        "$ref": "$[\"service\"][\"plugins\"]"
+      },
+      "custom": {
+        "$ref": "$[\"service\"][\"custom\"]"
+      },
+      "provider": {
+        "$ref": "$[\"service\"][\"provider\"]"
+      },
+      "package": {
+        "patterns": [
+          "!.env",
+          "!node_modules/serverless/**",
+          "!node_modules/aws-sdk/**",
+          "!test*",
+          "!./**/__tests__/**",
+          "!./**/**/__tests__/**",
+          "!__tests__/**",
+          "!docker-compose.yml",
+          "!buildspec.yml",
+          "!README*",
+          "!.nyc_output",
+          "!.test-setup.js",
+          "!__mocks__/**",
+          "!nodejs/**",
+          "!coverage/**"
+        ],
+        "artifactsS3KeyDirname": "serverless/player-service/jgs/code-artifacts",
+        "deploymentBucket": "meetup-demo-580216350677-us-west-1"
+      },
+      "functions": {
+        "$ref": "$[\"service\"][\"functions\"]"
+      },
+      "resources": {
+        "$ref": "$[\"service\"][\"resources\"]"
+      }
+    },
+    "layers": {},
+    "isDashboardMonitoringPreconfigured": false
+  },
+  "package": {
+    "artifactDirectoryName": "serverless/player-service/jgs/1654787774333-2022-06-09T15:16:14.333Z",
+    "artifact": "player-service.zip"
+  }
+}
